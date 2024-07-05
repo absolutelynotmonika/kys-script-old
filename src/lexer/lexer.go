@@ -121,6 +121,17 @@ func (l* Lexer) Lex() {
             continue
          }
 
+      case "!":
+         if l.Peek() == "=" {
+            l.AddToken("!=", NOT_EQUAL, currentLine)
+            l.Advance(2)
+            continue
+         } else {
+            l.AddToken("!", NOT, currentLine)
+            l.Advance(1)
+            continue
+         }
+
       case "=":
          if l.Peek() == "=" {
             l.AddToken("==", DOUBLE_EQUAL, currentLine)
@@ -146,7 +157,7 @@ func (l* Lexer) Lex() {
       l.Advance(1)
    }
 
-   // marking the end of file
+   // mark the end of file
    l.AddToken("eof", EOF, currentLine+1)
 
    dev_print("reached eof")

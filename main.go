@@ -31,7 +31,7 @@ func main() {
       l.Lex()
    
       for i, v := range l.Tokens {
-         fmt.Printf("token %v at line %v: lexeme - \"%v\", type - %v\n", i+1, v.Line, v.Lexeme, v.Type)
+         fmt.Printf("token %v at line %v: lexeme - \"%v\", type - %v\n", i, v.Line, v.Lexeme, v.Type)
       }
       fmt.Printf("Errors: %v\n", l.ErrorCount)
 

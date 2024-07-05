@@ -24,16 +24,15 @@ const (
    DOUBLE_EQUAL
    LESS_OR_EQUAL
    GREATER_OR_EQUAL
+   NOT_EQUAL
    EQUAL
    LESS
    GREATER
+   NOT
 
    // keywords
    TRUE
    FALSE
-   AND
-   OR
-   NOT
    FUNC
    IF
    NULL
