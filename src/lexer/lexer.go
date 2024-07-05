@@ -28,71 +28,38 @@ func (l* Lexer) AddToken(lexeme string, toktype TokenType, line int) {
       Type: toktype,
       Line: line,
    })
-   dev_print(fmt.Sprintf("[ TOKEN ] Added new token on line %v (lexeme %v)", line, lexeme))
+   dev_print(fmt.Sprintf("[ TOKEN ] Added new token on line %v (lexeme \"%v\")", line, lexeme))
 }
 
 // function to peek at the next value in the input code
-func (l* Lexer) Peek() (string, error) {
+func (l* Lexer) Peek() string {
    if l.Position+1 <= len(l.Code) { 
-      return string(l.Code[l.Position+1]), nil
+      return string(l.Code[l.Position+1])
    } else {
-      return "", fmt.Errorf("No next character.")
+      return ""
    }
 }
 
 func (l* Lexer) Lex() {
-   // pre initialised current values neccesary in the code.
+   ////// pre initialised current values neccesary in the code.
    identf_match := regexp.MustCompile(`[a-zA-Z_][a-zA-Z_0-9]*`)
    num_match := regexp.MustCompile(`\d+`)
-
+   
    // useful information vars
    currentLine := 0
-   isAtEnd := false
 
-   // main loop that lexes the code
+   /////// main loop that lexes the coded
+   dev_print("[ START ] loop will start")
    for {
+      // if reached the end 
       if l.Position >= len(l.Code) { 
          break 
-      } else if l.Position == len(l.Code) {
-         isAtEnd = true
       }
 
       // get the current position in the code 
       // as a string
       currentChar := string(l.Code[l.Position])
-
-      // map containing single characters, for checking ofc
-      chars := map[string]TokenType{
-         "\n": NEWLINE,
-         " ": WHITESPACE,
-         "(": L_PAREN,
-         ")": R_PAREN,
-         ".": DOT,
-         ",": COLON,
-         "+": PLUS,
-         "*": STAR,
-         "{": L_BRACE,
-         "}": R_BRACE,
-         "-": MINUS,
-      }
-
-      tokType, isChar := chars[currentChar] // check if the char is part of it
-      if isChar {
-         l.AddToken(currentChar, tokType, currentLine) // add
-         l.Advance(1)
-         continue
-      }
-
-      // double characters
-      nextChar, err := l.Peek()
-
-      if !isAtEnd && err == nil {
-         if currentChar == "=" && nextChar == "=" {
-            l.AddToken("==", DOUBLE_EQUAL, currentLine)
-            l.Advance(2)
-            continue
-         }
-      }
+      dev_print(fmt.Sprintf("[ INFO ] Current character in iteration: %v", currentChar))
 
       // pattern match for num
       if num_match.MatchString(currentChar) {
@@ -100,6 +67,71 @@ func (l* Lexer) Lex() {
          l.Advance(1)
          continue
       }
+  
+      // check if its a single character
+      // or operator/double characte
+
+      switch currentChar {
+      case " ":
+         l.AddToken(" ", WHITESPACE, currentLine)
+         l.Advance(1)
+         continue
+
+      case "+":
+         l.AddToken("+", PLUS, currentLine)
+         l.Advance(1)
+         continue
+
+      case "-":
+         l.AddToken("-", MINUS, currentLine)
+         l.Advance(1)
+         continue
+
+      case "*":
+         l.AddToken("*", STAR, currentLine)
+         l.Advance(1)
+         continue
+
+      case ".":
+         l.AddToken(".", DOT, currentLine)
+         l.Advance(1)
+         continue
+
+
+      // double chars here
+      case ">":
+         if l.Peek() == "=" {
+            l.AddToken(">=", GREATER_OR_EQUAL, currentLine)
+            l.Advance(2)
+            continue
+         } else {
+            l.AddToken(">", GREATER, currentLine)
+            l.Advance(1)
+            continue
+         }
+
+     case "<":
+         if l.Peek() == "=" {
+            l.AddToken("<=", LESS_OR_EQUAL, currentLine)
+            l.Advance(2)
+            continue
+         } else {
+            l.AddToken(">", LESS, currentLine)
+            l.Advance(1)
+            continue
+         }
+
+      case "=":
+         if l.Peek() == "=" {
+            l.AddToken("==", DOUBLE_EQUAL, currentLine)
+            l.Advance(2)
+            continue
+         } else {
+            l.AddToken("=", EQUAL, currentLine)
+            l.Advance(1)
+            continue
+         }
+      } // end of statement
 
       // pattern match for identifier
       if identf_match.MatchString(currentChar) {
@@ -110,7 +142,7 @@ func (l* Lexer) Lex() {
 
       // else...
       l.ErrorCount++
-      fmt.Println("IncurrentCharalid token found")
+      fmt.Println("Invalid token found")
       l.Advance(1)
    }
 

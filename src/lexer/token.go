@@ -22,7 +22,11 @@ const (
 
    // operators and logical and idk
    DOUBLE_EQUAL
+   LESS_OR_EQUAL
+   GREATER_OR_EQUAL
    EQUAL
+   LESS
+   GREATER
 
    // keywords
    TRUE
