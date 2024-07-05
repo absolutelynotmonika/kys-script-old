@@ -1,2 +1,2 @@
 # kys script
-programming language. (i think)
+programming language. (soon) (i think)
