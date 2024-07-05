@@ -16,6 +16,7 @@ const (
    MINUS
    PLUS
    STAR
+   SLASH
    EXCLAMATION
    L_BRACE
    R_BRACE

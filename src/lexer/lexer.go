@@ -33,11 +33,19 @@ func (l* Lexer) AddToken(lexeme string, toktype TokenType, line int) {
 
 // function to peek at the next value in the input code
 func (l* Lexer) Peek() string {
-   if l.Position+1 <= len(l.Code) { 
+   if l.Position+1 < len(l.Code) { 
       return string(l.Code[l.Position+1])
    } else {
-      return ""
+      return "" // means theres no next character
    }
+}
+
+func (l* Lexer) NextIsEnd() bool {
+   return l.Position+1 >= len(l.Code)
+}
+
+func (l* Lexer) IsAtEnd() bool {
+   return l.Position >= len(l.Code)
 }
 
 func (l* Lexer) Lex() {
@@ -51,30 +59,33 @@ func (l* Lexer) Lex() {
    /////// main loop that lexes the coded
    dev_print("[ START ] loop will start")
    for {
-      // if reached the end 
-      if l.Position >= len(l.Code) { 
-         break 
-      }
+      // check if the code ended
+      if l.IsAtEnd() { break }
 
       // get the current position in the code 
       // as a string
       currentChar := string(l.Code[l.Position])
       dev_print(fmt.Sprintf("[ INFO ] Current character in iteration: %v", currentChar))
-
-      // pattern match for num
-      if num_match.MatchString(currentChar) {
-         l.AddToken(currentChar, NUMBER, currentLine)
-         l.Advance(1)
-         continue
-      }
   
       // check if its a single character
       // or operator/double characte
 
       switch currentChar {
-      case " ":
+      case " ", "\t":
          l.AddToken(" ", WHITESPACE, currentLine)
          l.Advance(1)
+         continue
+
+      case "\n":
+         l.AddToken("\n", NEWLINE, currentLine)
+         l.Advance(1)
+         continue
+
+      case "#":
+         for l.Peek() != "#" && !l.NextIsEnd() {
+            l.Advance(1)
+         }
+         l.Advance(2) // so the character wont overlap and shit
          continue
 
       case "+":
@@ -89,6 +100,11 @@ func (l* Lexer) Lex() {
 
       case "*":
          l.AddToken("*", STAR, currentLine)
+         l.Advance(1)
+         continue
+
+      case "/":
+         l.AddToken("/", SLASH, currentLine)
          l.Advance(1)
          continue
 
@@ -143,6 +159,14 @@ func (l* Lexer) Lex() {
             continue
          }
       } // end of statement
+
+      // pattern match for num
+      if num_match.MatchString(currentChar) {
+         l.AddToken(currentChar, NUMBER, currentLine)
+         l.Advance(1)
+         continue
+      }
+
 
       // pattern match for identifier
       if identf_match.MatchString(currentChar) {
