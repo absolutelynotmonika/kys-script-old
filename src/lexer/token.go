@@ -38,7 +38,7 @@ const (
    IF
    NULL
    ELSE
-   ELIF
+   ELSEIF
    RETURN
    VAR
    WHILE

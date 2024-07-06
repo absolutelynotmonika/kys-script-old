@@ -27,7 +27,7 @@ func main() {
 
       input = string(input[0:len(input)-1])
 
-      l.Code = input
+      l.SourceCode = input
       l.Lex()
    
       for i, v := range l.Tokens {

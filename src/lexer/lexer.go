@@ -1,17 +1,22 @@
 package lexer
 
 import (
-   "fmt"
-   "regexp"
+	"fmt"
+	"unicode"
 )
 
-type Error struct {
-   Code int
-   Message string
+// useful functions
+func Error(line int, message string) {
+   fmt.Printf("E: At line %v: %v\n", line, message)
 }
 
+func IsDigit(char byte) bool {
+   return char <= '0' && char >= '9'
+}
+
+// main lexer struct
 type Lexer struct {
-   Code string
+   SourceCode string
    Tokens []Token
    Position,
    ErrorCount int
@@ -33,43 +38,66 @@ func (l* Lexer) AddToken(lexeme string, toktype TokenType, line int) {
 
 // function to peek at the next value in the input code
 func (l* Lexer) Peek() string {
-   if l.Position+1 < len(l.Code) { 
-      return string(l.Code[l.Position+1])
-   } else {
-      return "" // means theres no next character
+   if l.Position+1 < len(l.SourceCode) { 
+      return string(l.SourceCode[l.Position+1])
    }
+   return "\x00" // means theres no next character
 }
 
+func (l* Lexer) PeekDouble() byte {
+   if l.Position+2 >= len(l.SourceCode) { return '\x00' }
+   return l.SourceCode[l.Position+2]
+}
+
+func (l* Lexer) GetPattern(start, end int) string {
+   return l.SourceCode[start:end]
+}
+
+// function to check if the next character is the end of the source code
 func (l* Lexer) NextIsEnd() bool {
-   return l.Position+1 >= len(l.Code)
+   return l.Position+1 >= len(l.SourceCode)
 }
 
+// function to check if the current character is the end of the source code
 func (l* Lexer) IsAtEnd() bool {
-   return l.Position >= len(l.Code)
+   return l.Position >= len(l.SourceCode)
 }
+
+func (l* Lexer) IsAlphabetic(char rune) bool {
+   return char >= 'a' || char <= 'z' || char >= 'A' || char <= 'Z' || char == '_'
+}
+
+
 
 func (l* Lexer) Lex() {
-   ////// pre initialised current values neccesary in the code.
-   identf_match := regexp.MustCompile(`[a-zA-Z_][a-zA-Z_0-9]*`)
-   num_match := regexp.MustCompile(`\d+`)
-   
+   // keywords map
+   keywords := map[string]TokenType{
+      "if": IF,
+      "elseif": ELSEIF,
+      "else": ELSE,
+      "var": VAR,
+      "func": FUNC,
+      "true": TRUE,
+      "false": FALSE,
+      "print": PRINT,
+      "return": RETURN,
+   }
+
    // useful information vars
    currentLine := 0
 
-   /////// main loop that lexes the coded
+   /////// main loop that lexes the source code
    dev_print("[ START ] loop will start")
    for {
       // check if the code ended
       if l.IsAtEnd() { break }
 
-      // get the current position in the code 
-      // as a string
-      currentChar := string(l.Code[l.Position])
+      // get the current position in the source code as a string
+      currentChar := string(l.SourceCode[l.Position])
       dev_print(fmt.Sprintf("[ INFO ] Current character in iteration: %v", currentChar))
   
       // check if its a single character
-      // or operator/double characte
-
+      // or operator/double characters
       switch currentChar {
       case " ", "\t":
          l.AddToken(" ", WHITESPACE, currentLine)
@@ -78,14 +106,34 @@ func (l* Lexer) Lex() {
 
       case "\n":
          l.AddToken("\n", NEWLINE, currentLine)
+         currentLine++
          l.Advance(1)
          continue
 
       case "#":
-         for l.Peek() != "#" && !l.NextIsEnd() {
+         for (l.Peek() != "#" || l.Peek() != "\n") && !l.NextIsEnd() {
             l.Advance(1)
          }
-         l.Advance(2) // so the character wont overlap and shit
+         l.Advance(2) // advance the ending # or newline
+         continue
+
+      case "\"":
+         start := l.Position
+         end := l.Position+1
+
+         for l.Peek() != "\"" && !l.IsAtEnd() {
+            end++
+            if l.Peek() == "\n" { currentLine++ }
+            l.Advance(1)
+         }
+
+         if l.IsAtEnd() {
+            Error(currentLine, "Unterminated string.")
+            return;
+         }
+
+         l.AddToken(l.GetPattern(start+1, end), STRING, currentLine) 
+         l.Advance(2) // advance the ending "
          continue
 
       case "+":
@@ -158,21 +206,43 @@ func (l* Lexer) Lex() {
             l.Advance(1)
             continue
          }
-      } // end of statement
 
-      // pattern match for num
-      if num_match.MatchString(currentChar) {
-         l.AddToken(currentChar, NUMBER, currentLine)
-         l.Advance(1)
-         continue
-      }
+      default:
+         // check is numbet
+         if unicode.IsDigit(rune(currentChar[0])) {
+            start := l.Position
+            end := l.Position+1
+   
+            for unicode.IsDigit(rune(l.Peek()[0])) { l.Advance(1); end++ }
 
+            if l.Peek() == "." && unicode.IsDigit(rune(l.PeekDouble())) {
+               l.Advance(1) // eat the .
+               end++ // ↑
+               for unicode.IsDigit(rune(l.Peek()[0])) { end++; l.Advance(1) }
+            }
 
-      // pattern match for identifier
-      if identf_match.MatchString(currentChar) {
-         l.AddToken(currentChar, IDENTIFIER, currentLine)
-         l.Advance(1)
-         continue
+            l.Advance(1) // consume the last number
+            l.AddToken(l.GetPattern(start, end), NUMBER, currentLine)
+            continue
+         }
+
+         if l.IsAlphabetic(rune(currentChar[0])) {
+            // check if it is a keyword
+            for key, value := range keywords {
+               if l.Position+len(key)+1 <= len(l.SourceCode) && l.GetPattern(l.Position, l.Position+len(key)+1) == key + " " {
+                  l.AddToken(key, value, currentLine)
+                  l.Advance(len(key))
+                  goto end_of_loop // no idea why continue doesnt work but hey.
+               }
+            }
+
+            // if it isnt, its an identifier
+            l.AddToken(currentChar, IDENTIFIER, currentLine)
+            l.Advance(1)
+            continue
+            
+            end_of_loop:
+         }
       }
 
       // else...
@@ -183,6 +253,5 @@ func (l* Lexer) Lex() {
 
    // mark the end of file
    l.AddToken("eof", EOF, currentLine+1)
-
    dev_print("reached eof")
 }
