@@ -64,7 +64,7 @@ func (l* Lexer) IsAtEnd() bool {
 }
 
 func (l* Lexer) IsAlphabetic(char rune) bool {
-   return char >= 'a' || char <= 'z' || char >= 'A' || char <= 'Z' || char == '_'
+   return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '_'
 }
 
 
@@ -87,7 +87,7 @@ func (l* Lexer) Lex() {
    currentLine := 0
 
    /////// main loop that lexes the source code
-   dev_print("[ START ] loop will start")
+   dev_print("[ START ] Loop will start")
    for {
       // check if the code ended
       if l.IsAtEnd() { break }
@@ -227,28 +227,49 @@ func (l* Lexer) Lex() {
          }
 
          if l.IsAlphabetic(rune(currentChar[0])) {
+            // if i place those where they should, the goto label doesnt work
+            // i hate myself.
+            start := 0
+            end := 0
+
             // check if it is a keyword
             for key, value := range keywords {
-               if l.Position+len(key)+1 <= len(l.SourceCode) && l.GetPattern(l.Position, l.Position+len(key)+1) == key + " " {
+               char_after_keyw := l.Position+len(key)
+
+               // if it matches a keyword and has a space aftwarards, proceed
+               if char_after_keyw+1 <= len(l.SourceCode) && l.GetPattern(l.Position, char_after_keyw+1) == key+" " {
                   l.AddToken(key, value, currentLine)
                   l.Advance(len(key))
+                  goto end_of_loop // no idea why continue doesnt work but hey.
+
+               // if it matches a keyword and theres no afterward/is eof, proceed
+               } else if char_after_keyw == len(l.SourceCode) && l.GetPattern(l.Position, char_after_keyw) == key {
+                  l.AddToken(key, value, currentLine)
+                  l.Advance(len(key))
+
                   goto end_of_loop // no idea why continue doesnt work but hey.
                }
             }
 
-            // if it isnt, its an identifier
-            l.AddToken(currentChar, IDENTIFIER, currentLine)
+            // if it isnt a keyword, its an identifier
+            start = l.Position
+            end = l.Position+1
+   
+            for l.Peek() != " " && l.Peek() != "\x00" && l.IsAlphabetic(rune(l.Peek()[0])) { end++; l.Advance(1) }
+
+            l.AddToken(l.GetPattern(start, end), IDENTIFIER, currentLine)
             l.Advance(1)
             continue
             
             end_of_loop:
+               continue
          }
-      }
 
-      // else...
-      l.ErrorCount++
-      fmt.Println("Invalid token found")
-      l.Advance(1)
+         // else...
+         l.ErrorCount++
+         fmt.Println("Invalid token found")
+         l.Advance(1)
+      }
    }
 
    // mark the end of file
