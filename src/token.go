@@ -1,4 +1,4 @@
-package lexer
+package kysscript
 
 type TokenType int // fancy way of saying int
 const (
